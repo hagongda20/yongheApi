@@ -25,7 +25,7 @@ def get_wage_logs():
         else:
             logs = WageLog.query.all()
 
-        print('工资记录：', logs)
+        # print('工资记录：', logs)
 
         log_list = [
             {

@@ -1,16 +1,37 @@
+from datetime import datetime
 from flask import Blueprint, request, jsonify
+from sqlalchemy import or_
 from db_config import db
 from models import Worker,Process
+import pytz
 
 worker_bp = Blueprint('worker', __name__)
+
+utc = pytz.utc
+china = pytz.timezone('Asia/Shanghai')
 
 # 工人列表
 @worker_bp.route('/', methods=['GET'])
 def get_workers():
     try:
         # 查询所有工人数据
-        workers = Worker.query.all()
+        date_str = request.args.get('date')  # 获取查询参数中的日期
 
+        if date_str:
+            try:
+                query_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            except ValueError:
+                return jsonify({'message': 'Invalid date format. Use YYYY-MM-DD.'}), 400
+
+            workers = Worker.query.filter(
+                Worker.entry_date <= query_date,
+                or_(Worker.leave_date.is_(None), Worker.leave_date >= query_date)
+            ).all()
+
+        else:
+            workers = Worker.query.all()
+        #workers = Worker.query.all()
+        #print("所有工人：", workers)
         # 构造返回的数据
         worker_list = [
             {
@@ -19,6 +40,9 @@ def get_workers():
                 'id_card': worker.id_card,
                 'remark': worker.remark,
                 'group': worker.group,
+                'entry_date': worker.entry_date.strftime('%Y-%m-%d'),
+                'leave_date': worker.leave_date.strftime('%Y-%m-%d') if worker.leave_date else None,
+                'status': worker.status,
                 'process': {
                     'id': worker.process.id,
                     'name': worker.process.name
@@ -26,7 +50,7 @@ def get_workers():
             }
             for worker in workers
         ]
-        
+        print("序列化工人列表:",worker_list)
         return jsonify({'workers': worker_list}), 200
     except Exception as e:
         # 记录详细错误信息
@@ -47,7 +71,10 @@ def get_worker(id):
         'id_card': worker.id_card,
         'remark': worker.remark,
         'group': worker.group,
-        'process_id': worker.process_id
+        'process_id': worker.process_id,
+        'entry_date': worker.entry_date.strftime('%Y-%m-%d'),
+        'leave_date': worker.leave_date.strftime('%Y-%m-%d') if worker.leave_date else None,
+        'status': worker.status,
     }), 200
 
 
@@ -83,6 +110,9 @@ def add_worker():
             id_card=data.get('id_card', ''),
             remark=data.get('remark', ''),
             group=data.get('group', ''),
+            entry_date=data.get('entry_date', ''),
+            leave_date=data.get('leave_date', ''),
+            status=data.get('status', ''),
             process_id=process_id
         )
 
@@ -119,6 +149,9 @@ def update_worker(id):
     worker.id_card = data.get('id_card', worker.id_card)
     worker.remark = data.get('remark', worker.remark)
     worker.group = data.get('group', worker.group)
+    worker.entry_date = data.get('entry_date', worker.entry_date)
+    worker.leave_date = data.get('leave_date', worker.leave_date)
+    worker.status = data.get('status', worker.status)
     worker.process_id = data.get('process_id', worker.process_id)
 
     try:
