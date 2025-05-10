@@ -1,6 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Numeric, func
-from datetime import datetime
+from datetime import datetime, date
 from db_config import db
 
 # 基类：自动添加时间戳字段
@@ -17,6 +17,10 @@ class Worker(db.Model, TimestampMixin):
     id_card = db.Column(db.String(18), nullable=True)
     remark = db.Column(db.String(100))
     group = db.Column(db.String(40), nullable=True)  # 如 A组 / B组 
+
+    entry_date = db.Column(db.Date, nullable=True, default=date.today)  # 入职时间，默认今天
+    leave_date = db.Column(db.Date, nullable=True)  # 离职时间
+    status = db.Column(db.String(10), nullable=True, default='在职')  # 状态：在职 / 离职
 
     process_id = db.Column(db.Integer, db.ForeignKey('processes.id'), nullable=True)
 
