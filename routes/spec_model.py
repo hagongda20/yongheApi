@@ -1,12 +1,14 @@
 from flask import Blueprint, request, jsonify
 from db_config import db
 from models import SpecModel
+from utils.decorators import login_required
 
 spec_model_bp = Blueprint('spec_model', __name__, url_prefix='/api/specmodels')
 
 
 # 获取所有规格型号
 @spec_model_bp.route('/', methods=['GET'])
+@login_required
 def get_spec_models():
     try:
         spec_models = SpecModel.query.order_by(SpecModel.process_id).all()

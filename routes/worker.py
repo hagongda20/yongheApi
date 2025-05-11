@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify
 from sqlalchemy import or_
 from db_config import db
 from models import Worker,Process
+from utils.decorators import login_required
 import pytz
 
 worker_bp = Blueprint('worker', __name__)
@@ -12,6 +13,7 @@ china = pytz.timezone('Asia/Shanghai')
 
 # 工人列表
 @worker_bp.route('/', methods=['GET'])
+@login_required
 def get_workers():
     try:
         # 查询所有工人数据

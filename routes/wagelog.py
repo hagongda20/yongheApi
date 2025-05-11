@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from db_config import db
 from models import WageLog, Worker, Process, SpecModel
+from utils.decorators import login_required
 from datetime import datetime
 import pytz
 
@@ -11,6 +12,7 @@ china = pytz.timezone('Asia/Shanghai')
 
 # 获取所有工资记录
 @wagelog_bp.route('/', methods=['GET'])
+@login_required
 def get_wage_logs():
     try:
         date_str = request.args.get('date')  # 获取查询参数中的日期
@@ -157,6 +159,7 @@ def delete_wage_log(id):
 
 # 日期区间、工人、工序综合查询
 @wagelog_bp.route('/query', methods=['GET'])
+@login_required
 def query_wage_logs():
     try:
         start_date_str = request.args.get('start_date')

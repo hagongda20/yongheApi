@@ -1,11 +1,13 @@
 from flask import Blueprint, request, jsonify
 from db_config import db
 from models import Process
+from utils.decorators import login_required
 
 process_bp = Blueprint('process', __name__)
 
 # 获取所有工序
 @process_bp.route('/', methods=['GET'])
+@login_required
 def get_processes():
     try:
         processes = Process.query.all()
