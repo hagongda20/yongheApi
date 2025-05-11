@@ -50,7 +50,7 @@ def get_workers():
             }
             for worker in workers
         ]
-        print("序列化工人列表:",worker_list)
+        #print("序列化工人列表:",worker_list)
         return jsonify({'workers': worker_list}), 200
     except Exception as e:
         # 记录详细错误信息
