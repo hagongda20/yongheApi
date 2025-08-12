@@ -31,4 +31,4 @@ app.register_blueprint(wagelog_bp, url_prefix='/api/wage_logs') # 注册工资�
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=6000)
+    app.run(debug=True, host="0.0.0.0", port=6000)
