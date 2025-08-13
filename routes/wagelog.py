@@ -214,3 +214,62 @@ def query_wage_logs():
         print(f"Error querying wage logs: {e}")
         return jsonify({'message': 'Failed to query wage logs', 'error': str(e)}), 400
 
+# 批量导入工资记录
+@wagelog_bp.route('/batch_import', methods=['POST'])
+@login_required
+def batch_import_wage_logs():
+    """
+    批量导入工资记录
+    接收 JSON 数组，每条记录包含：
+    {
+        worker_id, process_id, spec_model_id, date, actual_price, quantity, total_wage, actual_group_size, remark
+    }
+    """
+    try:
+        data = request.get_json()
+        if not isinstance(data, list):
+            return jsonify({'success': False, 'message': '数据格式错误，需为数组'}), 400
+
+        batch_size = 500  # 每次插入数量，防止一次插入过大
+        total = len(data)
+        inserted_count = 0
+        print("准备批量导入的数据：", data)
+        for i in range(0, total, batch_size):
+            chunk = data[i:i+batch_size]
+            wage_objs = []
+
+            for row in chunk:
+                # 必填字段检查
+                required_fields = ['worker_id', 'process_id', 'spec_model_id', 'date', 'actual_price', 'quantity', 'total_wage', 'actual_group_size']
+                if not all(field in row for field in required_fields):
+                    continue  # 跳过缺失字段的行
+
+                # 构建 WageLog 对象
+                wage = WageLog(
+                    worker_id=row['worker_id'],
+                    process_id=row['process_id'],
+                    spec_model_id=row['spec_model_id'],
+                    date=datetime.strptime(row['date'], '%Y-%m-%d').date(),
+                    actual_price=row['actual_price'],
+                    quantity=row['quantity'],
+                    total_wage=row['total_wage'],
+                    actual_group_size=row.get('actual_group_size', 1),
+                    remark=row.get('remark', '')
+                )
+                wage_objs.append(wage)
+
+            # 批量写入
+            if wage_objs:
+                db.session.bulk_save_objects(wage_objs)
+                db.session.commit()
+                inserted_count += len(wage_objs)
+
+        return jsonify({
+            'success': True,
+            'inserted': inserted_count,
+            'total': total
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500

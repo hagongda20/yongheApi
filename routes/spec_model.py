@@ -18,6 +18,7 @@ def get_spec_models():
                 'name': s.name,
                 'category': s.category,
                 'process_id': s.process_id,
+                'process_name':s.process.name,
                 'price': s.price
             } for s in spec_models
         ]
