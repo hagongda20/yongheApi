@@ -1,7 +1,8 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_migrate import Migrate
 from db_config import db, init_db_config
+import traceback
 
 from routes.hello import hello_bp
 from routes.user import user_bp
@@ -9,7 +10,7 @@ from routes.admin import admin_bp
 from routes.worker import worker_bp
 from routes.process import process_bp
 from routes.spec_model import spec_model_bp
-from routes.wagelog import wagelog_bp
+# from routes.wage_log import wage_log_bp
 
 app = Flask(__name__)
 
@@ -20,16 +21,32 @@ init_db_config(app)
 # 数据迁移工具初始化
 migrate = Migrate(app, db)
 
+# 全局异常处理
+@app.errorhandler(Exception)
+def handle_global_exception(e):
+    traceback.print_exc()
+    response = {'ok': False, 'msg': '服务器内部发生错误', 'error': str(e) }
+    return jsonify(response), 500
+
+# 404处理
+@app.errorhandler(404)
+def handle_404(error):
+    response = {
+        'ok': False,
+        "error": "Not Found",
+        "msg": "The requested URL was not found on the server.",
+    }
+    return jsonify(response), 404
 
 # 注册蓝图
 app.register_blueprint(hello_bp)
 app.register_blueprint(user_bp, url_prefix='/api/user') # 注册认证蓝图（登录、注册）
 app.register_blueprint(admin_bp, url_prefix='/api/admin') # 注册用户管理蓝图
-app.register_blueprint(worker_bp, url_prefix="/api/workers")  # 注册工人蓝图
-app.register_blueprint(process_bp, url_prefix='/api/processes') # 注册工序蓝图
-app.register_blueprint(spec_model_bp, url_prefix='/api/specmodels') # 注册规格蓝图
-# app.register_blueprint(wage_price_bp, url_prefix='/api/wageprice') # 注册工价蓝图
-app.register_blueprint(wagelog_bp, url_prefix='/api/wage_logs') # 注册工资记录蓝图
+app.register_blueprint(worker_bp, url_prefix="/api/worker")  # 注册工人蓝图
+app.register_blueprint(process_bp, url_prefix='/api/process') # 注册工序蓝图
+app.register_blueprint(spec_model_bp, url_prefix='/api/spec_model') # 注册规格蓝图
+# app.register_blueprint(wage_price_bp, url_prefix='/api/wage_price') # 注册工价蓝图
+# app.register_blueprint(wage_log_bp, url_prefix='/api/wage_logs') # 注册工资记录蓝图
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)

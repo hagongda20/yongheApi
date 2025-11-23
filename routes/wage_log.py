@@ -1,11 +1,11 @@
 from flask import Blueprint, request, jsonify
 from db_config import db
-from models import WageLog, Worker, Process, SpecModel
+from models import WageLog
 from utils.decorators import login_required
 from datetime import datetime
 import pytz
 
-wagelog_bp = Blueprint('wagelog', __name__)
+wage_log_bp = Blueprint('wagelog', __name__)
 
 utc = pytz.utc
 china = pytz.timezone('Asia/Shanghai')

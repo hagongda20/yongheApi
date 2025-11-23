@@ -10,7 +10,6 @@ def login_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         token = request.headers.get('Authorization')
-        print("token:", token)
         if not token:
             return jsonify({'ok': False, 'msg': '未登录'}), 401
         try:

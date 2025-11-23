@@ -1,4 +1,3 @@
-from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import Numeric
 from datetime import datetime, date
@@ -8,6 +7,15 @@ from db_config import db
 class TimestampMixin:
     created_at = db.Column(db.DateTime, default=datetime.utcnow, comment="创建时间")
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment="更新时间")
+
+    def to_dict(self, exclude=None):
+        if exclude is None:
+            exclude = []
+        return {
+            key: value
+            for key, value in self.__dict__.items()
+            if not key.startswith('_') and key not in exclude
+        }
 
 # 用户登录表
 class User(db.Model, TimestampMixin):
@@ -25,16 +33,18 @@ class User(db.Model, TimestampMixin):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+
 # 工人表
 class Worker(db.Model, TimestampMixin):
     __tablename__ = 'workers'
     id = db.Column(db.Integer, primary_key=True, comment="工人ID")
-    name = db.Column(db.String(50), unique=True, nullable=False, comment="工人姓名")
+    name = db.Column(db.String(50), nullable=False, comment="工人姓名")
     id_card = db.Column(db.String(18), unique=True, comment="身份证号")
     group = db.Column(db.String(40), comment="班组，如 A组 / B组")
     entry_date = db.Column(db.Date, default=date.today, comment="入职日期")
     leave_date = db.Column(db.Date, comment="离职日期")
     status = db.Column(db.String(10), nullable=False, default='在职', comment="状态：在职 / 离职")
+    remark = db.Column(db.Text, comment="备注")
 
     process_id = db.Column(db.Integer, db.ForeignKey('processes.id'), comment="当前所属工序ID")
     process = db.relationship('Process', back_populates='workers', lazy='joined')
