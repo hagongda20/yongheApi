@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from db_config import db
-from models import Process
+from models import Process, Worker
 from utils.decorators import login_required
 
 process_bp = Blueprint('process', __name__)
@@ -74,28 +74,31 @@ def get_process(id, current_user):
     process = Process.query.get(id)
     if not process:
         return jsonify({'ok': False, 'msg': '工序不存在'}), 404
-    return jsonify({
-        'ok': True,
-        'msg': '查询成功',
-        'data': {
-            'id': process.id,
-            'name': process.name,
-            'description': process.description
-        }
-    }), 200
-
+    print(process.to_dict(relations=['workers', 'spec_models', 'wage_logs']))
+    return jsonify({'ok': True, 'msg': '查询成功', 'data': process.to_dict(relations=['workers', 'spec_models', 'wage_logs'])}), 200
 
 # 获取所有工序
 @process_bp.route('/', methods=['GET'])
 @login_required
 def get_processes(current_user):
-    processes = Process.query.all()
-    process_list = [
-        {
-            'id': p.id,
-            'name': p.name,
-            'description': p.description
-        } for p in processes
-    ]
-    return jsonify({ 'ok': True, 'msg': '查询成功', 'data': process_list }), 200
+    worker_id = request.args.get('worker_id')
+
+    if worker_id:
+        # 根据 worker_id 查询该工人所属的工序
+        worker = Worker.query.get(worker_id)
+        if not worker:
+            return jsonify({'ok': False, 'msg': '工人不存在'}), 404
+
+        # 返回该工人对应的工序
+        process = Process.query.get(worker.process_id)
+        if process:
+            process_list = [process.to_dict()]
+        else:
+            process_list = []
+    else:
+        # 没有 worker_id 参数时返回所有工序
+        processes = Process.query.all()
+        process_list = [p.to_dict(relations=['workers', 'spec_models', 'wage_logs']) for p in processes]
+
+    return jsonify({'ok': True, 'msg': '查询成功', 'data': process_list}), 200
 

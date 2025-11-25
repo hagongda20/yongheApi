@@ -10,7 +10,7 @@ from routes.admin import admin_bp
 from routes.worker import worker_bp
 from routes.process import process_bp
 from routes.spec_model import spec_model_bp
-# from routes.wage_log import wage_log_bp
+from routes.wage_log import wage_log_bp
 
 app = Flask(__name__)
 
@@ -45,8 +45,8 @@ app.register_blueprint(admin_bp, url_prefix='/api/admin') # 注册用户管理�
 app.register_blueprint(worker_bp, url_prefix="/api/worker")  # 注册工人蓝图
 app.register_blueprint(process_bp, url_prefix='/api/process') # 注册工序蓝图
 app.register_blueprint(spec_model_bp, url_prefix='/api/spec_model') # 注册规格蓝图
-# app.register_blueprint(wage_price_bp, url_prefix='/api/wage_price') # 注册工价蓝图
-# app.register_blueprint(wage_log_bp, url_prefix='/api/wage_logs') # 注册工资记录蓝图
+# app.register_blueprint(wage_price_bp, url_prefix='/api/wage-price') # 注册工价蓝图
+app.register_blueprint(wage_log_bp, url_prefix='/api/wage_log') # 注册工资记录蓝图
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)

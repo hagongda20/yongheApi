@@ -110,21 +110,7 @@ def get_worker(id, current_user):
     if worker is None:
         return jsonify({'ok': False, 'msg': '工人不存在'}), 404
 
-    return jsonify({
-        'ok' : True,
-        'msg': '查找成功',
-        'data' : {
-            'id': worker.id,
-            'name': worker.name,
-            'id_card': worker.id_card,
-            'group': worker.group,
-            'process_id': worker.process_id,
-            'entry_date': worker.entry_date.strftime('%Y-%m-%d'),
-            'leave_date': worker.leave_date.strftime('%Y-%m-%d') if worker.leave_date else None,
-            'status': worker.status,
-            'remark': worker.remark,
-        }
-    }), 200
+    return jsonify({'ok' : True,'msg': '查找成功','data' : worker.to_dict()}), 200
 
 # 工人列表
 @worker_bp.route('/', methods=['GET'])
@@ -146,22 +132,6 @@ def get_workers(current_user):
     else:
         workers = Worker.query.all()
     # 构造返回的数据
-    worker_list = [
-        {
-            'id': worker.id,
-            'name': worker.name,
-            'id_card': worker.id_card,
-            'remark': worker.remark,
-            'group': worker.group,
-            'entry_date': worker.entry_date.strftime('%Y-%m-%d'),
-            'leave_date': worker.leave_date.strftime('%Y-%m-%d') if worker.leave_date else None,
-            'status': worker.status,
-            'process': {
-                'id': worker.process.id,
-                'name': worker.process.name
-            } if worker.process else None
-        }
-        for worker in workers
-    ]
+    worker_list = [worker.to_dict() for worker in workers]
     return jsonify({'ok': True, 'msg': '获取成功', 'data': worker_list}), 200
 

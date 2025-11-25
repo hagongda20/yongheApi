@@ -29,7 +29,6 @@ def register():
 
     return jsonify({'ok': True, 'msg': '用户注册成功', 'data': new_user.to_dict()}), 201
 
-
 # 登录
 @user_bp.route('/login', methods=['POST'])
 def login():
@@ -56,7 +55,6 @@ def login():
     db.session.commit()
     return jsonify({'ok': True, 'token': token, 'data': user.to_dict()})
 
-
 # 修改用户密码
 @user_bp.route('/<int:user_id>/password', methods=['PUT'])
 @login_required
@@ -80,8 +78,8 @@ def update_user_password(user_id, current_user):
     return jsonify({'ok': True, 'msg': '密码修改成功'}), 200
 
 
-# 注销用户
-@user_bp.route('/me', methods=['GET'])
+# 获取用户
+@user_bp.route('/info', methods=['GET'])
 @login_required
 def get_current_user_info(current_user):
     return jsonify({'ok': True,'data': current_user.to_dict()}), 200
