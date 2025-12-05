@@ -7,6 +7,12 @@ from routes.worker import worker_bp
 from routes.process import process_bp
 from routes.spec_model import spec_model_bp
 from routes.wagelog import wagelog_bp
+from routes.company_ledger.company import company_bp
+from routes.company_ledger.customer import customer_bp
+from routes.company_ledger.customer_account import customer_account_bp
+from routes.company_ledger.company_account import company_account_bp
+from routes.company_ledger.customer_balance import customer_balance_bp
+from routes.company_ledger.transaction_routes import transaction_bp
 
 import models
 
@@ -28,6 +34,12 @@ app.register_blueprint(process_bp, url_prefix='/api/processes') # 注册工序�
 app.register_blueprint(spec_model_bp, url_prefix='/api/specmodels') # 注册规格蓝图
 # app.register_blueprint(wage_price_bp, url_prefix='/api/wageprice') # 注册工价蓝图
 app.register_blueprint(wagelog_bp, url_prefix='/api/wage_logs') # 注册工资记录蓝图
+app.register_blueprint(company_bp, url_prefix='/api/company') # 注册公司记录蓝图
+app.register_blueprint(customer_bp, url_prefix='/api/customer') # 注册客户记录蓝图
+app.register_blueprint(customer_account_bp, url_prefix='/api/customer_account') # 注册客户账户蓝图
+app.register_blueprint(company_account_bp, url_prefix='/api/company_account') # 注册公司账户蓝图
+app.register_blueprint(customer_balance_bp, url_prefix='/api/customer_balance') # 注册公司账户蓝图
+app.register_blueprint(transaction_bp, url_prefix='/api/transaction') # 注册转账流水蓝图
 
 
 if __name__ == "__main__":

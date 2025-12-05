@@ -113,3 +113,219 @@ class WageLog(db.Model, TimestampMixin):
     worker = db.relationship('Worker', back_populates='wage_logs')
     process = db.relationship('Process', back_populates='wage_logs')
     spec_model = db.relationship('SpecModel', back_populates='wage_logs')
+
+
+
+# 12。04 #
+# -------------------------------
+# 公司表：三个公司独立核算
+# -------------------------------
+class Company(db.Model):
+    __tablename__ = 'companies'
+
+    id = db.Column(db.Integer, primary_key=True)  # 公司ID，自增主键
+    name = db.Column(db.String(100), unique=True, nullable=False)  # 公司名称，如：A公司、B公司、C公司，唯一且必填
+    description = db.Column(db.String(200)) # 公司描述或业务范围，可选
+    remark = db.Column(db.String(200)) # 备注，用于记录其他额外信息或说明
+
+    # 关系
+    bank_accounts = db.relationship('CompanyAccount', back_populates='company')
+    customer_balances = db.relationship('CustomerBalance', back_populates='company')
+    transactions = db.relationship('Transaction', back_populates='company')
+
+# -------------------------------
+# 客户表：记录公司所有客户信息
+# -------------------------------
+class Customer(db.Model, TimestampMixin):
+    __tablename__ = 'customers'
+
+    id = db.Column(db.Integer, primary_key=True) # 客户ID，自增主键
+    name = db.Column(db.String(100), nullable=False) # 客户名称，必填
+    type = db.Column(
+        db.Enum('supplier','sales','other', name='customer_type'),
+        nullable=False
+    )
+    # 客户类型：supplier=供应商客户, sales=销售客户, other=其他
+    phone = db.Column(db.String(50)) # 客户联系电话，可选
+    company = db.Column(db.String(100)) # 客户所属单位/公司名称（非本公司），可选
+    is_deleted = db.Column(db.Boolean, default=False, nullable=False) # 软删除标识：True=已删除, False=正常
+    deleted_at = db.Column(db.DateTime) # 删除时间，可选
+    remark = db.Column(db.String(200)) # 客户备注，可用于记录合同号、特殊协议、业务说明等
+
+    # 关系
+    accounts = db.relationship('CustomerAccount', back_populates='customer')
+    transactions = db.relationship('Transaction', back_populates='customer')
+    balances = db.relationship('CustomerBalance', back_populates='customer')
+    adjustments = db.relationship('AdjustmentLog', back_populates='customer')
+
+# -------------------------------
+# 客户支付账户表
+# -------------------------------
+class CustomerAccount(db.Model, TimestampMixin):
+    __tablename__ = 'customer_accounts'
+
+    id = db.Column(db.Integer, primary_key=True) # 客户支付账户ID，自增主键
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False) # 所属客户ID，外键
+    account_type = db.Column(
+        db.Enum('bank','wechat','alipay','other', name='account_type'),
+        nullable=False
+    )
+    # 账户类型：bank=银行卡, wechat=微信, alipay=支付宝, other=其他
+    account_no = db.Column(db.String(50)) # 账户号，例如银行卡号/支付宝账号/微信号
+    bank_name = db.Column(db.String(100)) # 银行名称，仅银行卡类型填写
+    is_deleted = db.Column(db.Boolean, default=False, nullable=False) # 软删除标识
+    deleted_at = db.Column(db.DateTime) # 删除时间，可选
+    remark = db.Column(db.String(200)) # 账户备注，可用于记录用途、关联合同等
+
+    # 关系
+    customer = db.relationship('Customer', back_populates='accounts')
+    transactions = db.relationship('Transaction', back_populates='customer_account')
+
+    # -------------------------------
+    # 序列化方法
+    # -------------------------------
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "customer_id": self.customer_id,
+            "customer_name": self.customer.name if self.customer else None,
+            "account_type": self.account_type,
+            "account_no": self.account_no,
+            "bank_name": self.bank_name,
+            "remark": self.remark,
+            "is_deleted": self.is_deleted
+        }
+
+
+# -------------------------------
+# 公司账户表
+# -------------------------------
+class CompanyAccount(db.Model, TimestampMixin):
+    __tablename__ = 'company_accounts'
+
+    id = db.Column(db.Integer, primary_key=True) # 公司账户ID，自增主键
+    company_id = db.Column(db.Integer, db.ForeignKey('companies.id'), nullable=False) # 所属公司ID，外键
+    account_name = db.Column(db.String(100), nullable=False) # 账户用途或名称，例如“收款账户A”
+    account_type = db.Column(
+        db.Enum('bank','wechat','alipay','other', name='company_account_type'),
+        nullable=False
+    )
+    # 账户类型
+    account_no = db.Column(db.String(50), nullable=False) # 账户号
+    bank_name = db.Column(db.String(100)) # 银行名称，仅银行账户填写
+    currency = db.Column(db.String(10), default='CNY') # 币种，默认人民币
+    balance = db.Column(Numeric(12,2), default=0) # 当前余额，正数表示账户内实际金额
+
+    status = db.Column(
+        db.Enum('active','inactive', name='company_account_status'),
+        default='active'
+    )
+    # 账户状态：active=正常, inactive=停用
+
+    remark = db.Column(db.String(200)) # 备注，可记录用途、负责人、特殊说明等
+
+    # 关系
+    company = db.relationship('Company', back_populates='bank_accounts')
+    transactions = db.relationship('Transaction', back_populates='company_account')
+
+
+# -------------------------------
+# 转账流水表
+# -------------------------------
+class Transaction(db.Model, TimestampMixin):
+    __tablename__ = 'transactions'
+
+    id = db.Column(db.Integer, primary_key=True) # 流水ID，自增主键
+    company_id = db.Column(db.Integer, db.ForeignKey('companies.id'), nullable=False) # 所属公司ID
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False) # 客户ID
+    customer_account_id = db.Column(db.Integer, db.ForeignKey('customer_accounts.id')) # 客户支付账户ID，可选
+    company_account_id = db.Column(db.Integer, db.ForeignKey('company_accounts.id'), nullable=False) # 公司账户ID
+    amount = db.Column(Numeric(12,2), nullable=False) # 流水金额，**正数表示金额实际流动**    # 查询时通过 direction 判断收入/支出
+
+    direction = db.Column(
+        db.Enum('income','expense', name='transaction_direction'),
+        nullable=False
+    )   # 流水方向：income=收入(客户付款给公司), expense=支出(公司付款给客户)
+
+    method = db.Column(
+        db.Enum('bank','wechat','alipay','other', name='transaction_method'),
+        nullable=False
+    )  # 支付方式
+
+    reference_no = db.Column(db.String(100)) # 银行流水号或第三方交易号
+
+    status = db.Column(
+        db.Enum('pending','received','failed', name='transaction_status'),
+        default='pending'
+    )
+    # 流水状态：pending=待处理, received=已到账, failed=失败
+
+    remark = db.Column(db.String(200))  # 备注，可记录业务说明、合同号、发票号等
+
+    # 关系
+    company = db.relationship('Company', back_populates='transactions')
+    customer = db.relationship('Customer', back_populates='transactions')
+    customer_account = db.relationship('CustomerAccount', back_populates='transactions')
+    company_account = db.relationship('CompanyAccount', back_populates='transactions')
+    adjustments = db.relationship('AdjustmentLog', back_populates='transaction')
+
+
+# -------------------------------
+# 客户余额表
+# -------------------------------
+class CustomerBalance(db.Model, TimestampMixin):
+    __tablename__ = 'customer_balances'
+
+    id = db.Column(db.Integer, primary_key=True) # 主键ID
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False) # 客户ID
+    company_id = db.Column(db.Integer, db.ForeignKey('companies.id'), nullable=False) # 公司ID
+
+    __table_args__ = (
+        db.UniqueConstraint('customer_id', 'company_id', name='uq_customer_company'),
+    )
+    # 每个客户在每个公司下唯一
+
+    balance = db.Column(Numeric(12, 2, asdecimal=True), default=0, nullable=False)
+    adjustment_total = db.Column(Numeric(12, 2, asdecimal=True), default=0, nullable=False)
+
+    updated_at = db.Column(
+        db.DateTime,
+        default=db.func.current_timestamp(),
+        onupdate=db.func.current_timestamp()
+    )
+    # 更新时间，每次余额变动自动更新
+
+    remark = db.Column(db.String(200)) # 备注，可记录余额计算规则或业务说明
+
+    # 关系
+    customer = db.relationship('Customer', back_populates='balances')
+    company = db.relationship('Company', back_populates='customer_balances')
+    adjustments = db.relationship('AdjustmentLog', back_populates='customer_balance')
+
+
+# -------------------------------
+# 调账流水表
+# -------------------------------
+class AdjustmentLog(db.Model, TimestampMixin):
+    __tablename__ = 'adjustment_logs'
+
+    id = db.Column(db.Integer, primary_key=True) # 调账ID
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False) # 客户ID
+    customer_balance_id = db.Column(db.Integer, db.ForeignKey('customer_balances.id'), nullable=False) # 客户余额ID
+    transaction_id = db.Column(db.Integer, db.ForeignKey('transactions.id')) # 可选，关联原流水
+    amount = db.Column(Numeric(12,2), nullable=False)
+    # 调整金额，**始终正数**
+    # type 字段决定是增加余额还是减少余额
+    type = db.Column(
+        db.Enum('rounding','write_off','manual', name='adjustment_type'),
+        nullable=False
+    )
+    # 调整类型：rounding=抹零, write_off=勾账, manual=手动调整
+
+    remark = db.Column(db.String(200))
+    # 备注，可记录调整原因、责任人、审批信息等
+
+    # 关系
+    customer = db.relationship('Customer', back_populates='adjustments')
+    customer_balance = db.relationship('CustomerBalance', back_populates='adjustments')
+    transaction = db.relationship('Transaction', back_populates='adjustments')
