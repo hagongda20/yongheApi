@@ -163,6 +163,69 @@ def list_transactions():
 
 
 # =============================
+# 查询所有流水（不分页 + 条件）
+# =============================
+@transaction_bp.route("/all", methods=["GET"])
+def list_all_transactions():
+    company_id = request.args.get("company_id")
+    customer_id = request.args.get("customer_id")
+    direction = request.args.get("direction")
+    start_date = request.args.get("start_date")
+    end_date = request.args.get("end_date")
+
+    query = Transaction.query.order_by(Transaction.created_at.desc())
+
+    if company_id:
+        query = query.filter(Transaction.company_id == company_id)
+    if customer_id:
+        query = query.filter(Transaction.customer_id == customer_id)
+    if direction:
+        query = query.filter(Transaction.direction == direction)
+
+    # 时间范围
+    if start_date and end_date:
+        query = query.filter(
+            Transaction.created_at >= start_date,
+            Transaction.created_at < f"{end_date} 23:59:59"
+        )
+
+    # ⭐ 统计总金额（不分页）
+    total_amount = query.with_entities(func.sum(Transaction.amount)).scalar() or 0
+
+    # ⭐ 不分页，直接全部读取
+    items = query.all()
+
+    records = []
+    for t in items:
+        records.append({
+            "id": t.id,
+            "company_id": t.company_id,
+            'company_name': t.company.name,
+            "customer_id": t.customer_id,
+            'customer_name': t.customer.name,
+            "company_account_id": t.company_account_id,
+            'company_account_name': t.company_account.account_name,
+            'customer_account_id': t.customer_account_id,
+            'customer_account_name': t.customer_account.account_no,
+            "amount": float(t.amount),
+            "direction": t.direction,
+            "method": t.method,
+            "reference_no": t.reference_no,
+            "status": t.status,
+            "remark": t.remark,
+            "created_at": t.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "updated_at": t.updated_at.strftime("%Y-%m-%d %H:%M:%S")
+        })
+
+    return jsonify({
+        "success": True,
+        "data": records,
+        "total": len(records),
+        "total_amount": float(total_amount)
+    })
+
+
+# =============================
 # 删除流水
 # =============================
 @transaction_bp.route("/delete/<int:id>", methods=["DELETE"])

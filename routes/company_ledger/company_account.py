@@ -142,7 +142,7 @@ def list_all_accounts():
 
     return jsonify({
         "success": True,
-        "data": [model_to_dict(item) for item in items],
+        "items": [model_to_dict(item) for item in items],
         "total": len(items)
     })
 
