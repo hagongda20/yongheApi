@@ -36,10 +36,42 @@ def add_account():
 
 
 # -------------------------------------------------
-# 客户支付账户列表（支持 customer_id 筛选）
+# 客户支付账户列表（分页 + 支持 customer_id 筛选）
 # -------------------------------------------------
 @customer_account_bp.get("/list")
 def list_accounts():
+    page = request.args.get("page", default=1, type=int)
+    per_page = request.args.get("per_page", default=20, type=int)
+    customer_id = request.args.get("customer_id", type=int)
+
+    query = CustomerAccount.query.filter_by(is_deleted=False)
+
+    if customer_id:
+        query = query.filter(CustomerAccount.customer_id == customer_id)
+
+    # 分页
+    pagination = query.order_by(CustomerAccount.id.desc()).paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    )
+
+    return jsonify({
+        "success": True,
+        "data": {
+            "items": [item.to_dict() for item in pagination.items],
+            "total": pagination.total,
+            "page": pagination.page,
+            "per_page": pagination.per_page
+        }
+    })
+
+
+# -------------------------------------------------
+# 客户支付账户列表（支持 customer_id 筛选）,全部数据，不分页
+# -------------------------------------------------
+@customer_account_bp.get("/all")
+def list_all_accounts():
     customer_id = request.args.get("customer_id", type=int)
 
     query = CustomerAccount.query.filter_by(is_deleted=False)
@@ -54,7 +86,6 @@ def list_accounts():
         "total": len(items),
         "data": [item.to_dict() for item in items]
     })
-
 
 # -------------------------------------------------
 # 获取单条账户信息
