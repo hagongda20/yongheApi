@@ -142,7 +142,7 @@ class Customer(db.Model, TimestampMixin):
     id = db.Column(db.Integer, primary_key=True) # 客户ID，自增主键
     name = db.Column(db.String(100), nullable=False) # 客户名称，必填
     type = db.Column(
-        db.Enum('supplier','sales','other', name='customer_type'),
+        db.Enum('供应商','客户','个人','其他', name='customer_type'),
         nullable=False
     )
     # 客户类型：supplier=供应商客户, sales=销售客户, other=其他
@@ -167,7 +167,7 @@ class CustomerAccount(db.Model, TimestampMixin):
     id = db.Column(db.Integer, primary_key=True) # 客户支付账户ID，自增主键
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False) # 所属客户ID，外键
     account_type = db.Column(
-        db.Enum('bank','wechat','alipay','other', name='account_type'),
+        db.Enum('银行','微信','支付宝','现金','其他', name='account_type'),
         nullable=False
     )
     # 账户类型：bank=银行卡, wechat=微信, alipay=支付宝, other=其他
@@ -207,7 +207,7 @@ class CompanyAccount(db.Model, TimestampMixin):
     company_id = db.Column(db.Integer, db.ForeignKey('companies.id'), nullable=False) # 所属公司ID，外键
     account_name = db.Column(db.String(100), nullable=False) # 账户用途或名称，例如“收款账户A”
     account_type = db.Column(
-        db.Enum('bank','wechat','alipay','other', name='company_account_type'),
+        db.Enum('银行','微信','支付宝','现金','其他', name='company_account_type'),
         nullable=False
     )
     # 账户类型
@@ -217,8 +217,8 @@ class CompanyAccount(db.Model, TimestampMixin):
     balance = db.Column(Numeric(12,2), default=0) # 当前余额，正数表示账户内实际金额
 
     status = db.Column(
-        db.Enum('active','inactive', name='company_account_status'),
-        default='active'
+        db.Enum('正常','停用', name='company_account_status'),
+        default='正常'
     )
     # 账户状态：active=正常, inactive=停用
 
@@ -243,20 +243,20 @@ class Transaction(db.Model, TimestampMixin):
     amount = db.Column(Numeric(12,2), nullable=False) # 流水金额，**正数表示金额实际流动**    # 查询时通过 direction 判断收入/支出
 
     direction = db.Column(
-        db.Enum('income','expense', name='transaction_direction'),
+        db.Enum('收入','支出', name='transaction_direction'),
         nullable=False
     )   # 流水方向：income=收入(客户付款给公司), expense=支出(公司付款给客户)
 
     method = db.Column(
-        db.Enum('bank','wechat','alipay','other', name='transaction_method'),
+        db.Enum('银行','微信','支付宝','现金','其他',  name='transaction_method'),
         nullable=False
     )  # 支付方式
 
     reference_no = db.Column(db.String(100)) # 银行流水号或第三方交易号
 
     status = db.Column(
-        db.Enum('pending','received','failed', name='transaction_status'),
-        default='pending'
+        db.Enum('待处理','已到账','失败', name='transaction_status'),
+        default='已到账'
     )
     # 流水状态：pending=待处理, received=已到账, failed=失败
 
@@ -317,7 +317,7 @@ class AdjustmentLog(db.Model, TimestampMixin):
     # 调整金额，**始终正数**
     # type 字段决定是增加余额还是减少余额
     type = db.Column(
-        db.Enum('rounding','write_off','manual', name='adjustment_type'),
+        db.Enum('抹零','勾账','手动调整', name='adjustment_type'),
         nullable=False
     )
     # 调整类型：rounding=抹零, write_off=勾账, manual=手动调整

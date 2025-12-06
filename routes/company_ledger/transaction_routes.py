@@ -1,7 +1,10 @@
+from datetime import datetime
 from flask import Blueprint, request, jsonify
 from decimal import Decimal
 from db_config import db
 from models import Transaction, CustomerBalance, AdjustmentLog
+from sqlalchemy import func
+
 
 transaction_bp = Blueprint("transaction", __name__)
 
@@ -58,7 +61,7 @@ def add_transaction():
 
     # income = 客户付款给公司  → 欠款减少
     # expense = 公司付款给客户 → 欠款增加
-    if direction == "income":
+    if direction == "收入":
         cb.balance = decimal2(cb.balance - amount)
     else:
         cb.balance = decimal2(cb.balance + amount)
@@ -85,6 +88,9 @@ def update_transaction(id):
     item.remark = data.get("remark", item.remark)
     item.status = data.get("status", item.status)
 
+    # 🔥 关键：更新时间
+    item.updated_at = datetime.now()
+
     db.session.commit()
 
     return jsonify({"success": True, "message": "更新成功"})
@@ -98,10 +104,12 @@ def list_transactions():
     company_id = request.args.get("company_id")
     customer_id = request.args.get("customer_id")
     direction = request.args.get("direction")
+    start_date = request.args.get("start_date")
+    end_date = request.args.get("end_date")
     page = int(request.args.get("page", 1))
     page_size = int(request.args.get("page_size", 20))
 
-    query = Transaction.query.order_by(Transaction.id.desc())
+    query = Transaction.query.order_by(Transaction.created_at.desc())
 
     if company_id:
         query = query.filter(Transaction.company_id == company_id)
@@ -109,6 +117,16 @@ def list_transactions():
         query = query.filter(Transaction.customer_id == customer_id)
     if direction:
         query = query.filter(Transaction.direction == direction)
+
+    # 时间范围（前端传 YYYY-MM-DD）
+    if start_date and end_date:
+        query = query.filter(
+            Transaction.created_at >= start_date,
+            Transaction.created_at <  f"{end_date} 23:59:59"
+        )
+
+    # ⭐ 统计总金额（不分页）
+    total_amount = query.with_entities(func.sum(Transaction.amount)).scalar() or 0
 
     pagination = query.paginate(page=page, per_page=page_size, error_out=False)
 
@@ -132,13 +150,15 @@ def list_transactions():
             "reference_no": t.reference_no,
             "status": t.status,
             "remark": t.remark,
-            "created_at": t.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            "created_at": t.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "updated_at": t.updated_at.strftime("%Y-%m-%d %H:%M:%S")
         })
 
     return jsonify({
         "success": True,
         "data": records,
-        "total": pagination.total
+        "total": pagination.total,
+        "total_amount": float(total_amount)    # ⭐ 返回给前端
     })
 
 
@@ -161,7 +181,7 @@ def delete_transaction(id):
 
         # income = 客户付款 → 欠款减少
         # 删除收入流水 = 欠款增加
-        if item.direction == "income":
+        if item.direction == "收入":
             cb.balance = decimal2(cb.balance + amount)
         else:
             cb.balance = decimal2(cb.balance - amount)

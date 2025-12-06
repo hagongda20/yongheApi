@@ -130,3 +130,41 @@ def delete_customer(customer_id):
     cust.deleted_at = datetime.utcnow()
     db.session.commit()
     return jsonify({'message': '客户已软删除'})
+
+
+# -------------------------------
+# 获取所有客户（不分页）
+# -------------------------------
+@customer_bp.route('/all', methods=['GET'])
+def get_all_customers():
+    """
+    查询所有客户，不分页
+    支持参数：
+    - name: 客户名称模糊搜索
+    - type: 客户类型
+    """
+    name = request.args.get('name')
+    cust_type = request.args.get('type')
+
+    query = Customer.query.filter_by(is_deleted=False)
+
+    if name:
+        query = query.filter(Customer.name.ilike(f'%{name}%'))
+    if cust_type:
+        query = query.filter_by(type=cust_type)
+
+    items = query.order_by(Customer.id.desc()).all()
+
+    data = [{
+        'id': cust.id,
+        'name': cust.name,
+        'type': cust.type,
+        'phone': cust.phone,
+        'company': cust.company,
+        'remark': getattr(cust, 'remark', '')
+    } for cust in items]
+
+    return jsonify({
+        'total': len(items),
+        'items': data
+    })

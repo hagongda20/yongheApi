@@ -44,7 +44,7 @@ def add_account():
             bank_name=data.get("bank_name"),
             currency=data.get("currency", "CNY"),
             balance=data.get("balance", 0),
-            status=data.get("status", "active"),
+            status=data.get("status", "正常"),
             remark=data.get("remark")
         )
         db.session.add(account)
@@ -123,6 +123,27 @@ def list_accounts():
             "page": pagination.page,
             "per_page": pagination.per_page
         }
+    })
+
+
+# -------------------------------
+# 5. 查询所有公司账户（不分页）
+# -------------------------------
+@company_account_bp.route("/all", methods=["GET"])
+def list_all_accounts():
+    company_id = request.args.get("company_id")
+
+    query = CompanyAccount.query
+
+    if company_id:
+        query = query.filter(CompanyAccount.company_id == company_id)
+
+    items = query.order_by(CompanyAccount.id.desc()).all()
+
+    return jsonify({
+        "success": True,
+        "data": [model_to_dict(item) for item in items],
+        "total": len(items)
     })
 
 
