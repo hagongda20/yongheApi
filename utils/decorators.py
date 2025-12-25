@@ -1,25 +1,38 @@
-# utils/decorators.py
-from flask import request, jsonify
-import jwt
-from models import User
-
-SECRET_KEY = 'dao-hao-shi-gou'
+from functools import wraps
+from flask import g, jsonify
 
 def login_required(f):
+    @wraps(f)
     def wrapper(*args, **kwargs):
-        token = request.headers.get('Authorization')
-        print("token:", token)
-        if not token:
-            return jsonify({'code': 401, 'msg': '未登录'}), 401
-        try:
-            data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-            user = User.query.get(data['user_id'])
-            if not user or user.last_login_token != token:
-                return jsonify({'code': 401, 'msg': '登录已失效或被顶号'}), 401
-        except jwt.ExpiredSignatureError:
-            return jsonify({'code': 401, 'msg': '登录已过期'}), 401
-        except jwt.InvalidTokenError:
-            return jsonify({'code': 401, 'msg': '无效的登录信息'}), 401
+        if not getattr(g, 'current_user', None):
+            return jsonify({
+                'code': 401,
+                'msg': '未登录或登录已失效'
+            }), 401
+
         return f(*args, **kwargs)
-    wrapper.__name__ = f.__name__
+
     return wrapper
+
+
+# 角色权限验证装饰器
+def roles_required(*required_roles):
+    """
+    使用示例:
+        @roles_required('管理员', '会计')
+    """
+    def decorator(f):
+        @wraps(f)
+        @login_required  # 先确保用户已登录
+        def wrapper(*args, **kwargs):
+            user = g.current_user
+            role_names = [role.name for role in getattr(user, 'roles', [])]
+            # print(f"用户角色: {role_names}")  # 可以打印调试
+
+            # 检查是否有权限
+            if not any(r in role_names for r in required_roles):
+                return jsonify({'code': 403, 'msg': '权限不足'}), 403
+
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator

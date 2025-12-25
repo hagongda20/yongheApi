@@ -19,11 +19,73 @@ class User(db.Model):
     last_login_token = db.Column(db.String(255), nullable=True)
     last_login_time = db.Column(db.DateTime, default=datetime.utcnow)
 
+    is_active = db.Column(db.Boolean, default=True)  # 激活状态可用
+    created_at = db.Column(db.DateTime, default=datetime.utcnow) # 创建时间
+
+    # 新增注册表对应字段
+    real_name = db.Column(db.String(50))
+    phone = db.Column(db.String(20))
+    remark = db.Column(db.String(255))
+
+    # ⭐ 关键：角色关联
+    roles = db.relationship(
+        'Role',
+        secondary='user_roles',
+        backref='users'
+    )
+
     def set_password(self, password):
         self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+
+# 注册申请表
+class UserRegister(db.Model):
+    __tablename__ = 'user_registers'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    username = db.Column(db.String(50), nullable=False)      
+    password_hash = db.Column(db.String(128), nullable=False)
+
+    real_name = db.Column(db.String(50))  # 真实姓名，用于锁定记录者
+    phone = db.Column(db.String(20))     # 
+    remark = db.Column(db.String(255))  # 备注
+
+    # 状态：待审核 / 已通过 / 已拒绝
+    status = db.Column(db.String(20), default='待审核')
+
+    reject_reason = db.Column(db.String(255))    # 拒绝原因
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    reviewed_at = db.Column(db.DateTime)   # 审核时间
+
+    reviewed_by = db.Column(db.Integer)  # 管理员 user.id
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(
+            password, method='pbkdf2:sha256'
+        )
+
+
+#角色表
+class Role(db.Model):
+    __tablename__ = 'roles'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)
+    description = db.Column(db.String(255))
+
+
+#用户-角色关联表
+class UserRole(db.Model):
+    __tablename__ = 'user_roles'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    role_id = db.Column(db.Integer, db.ForeignKey('roles.id'), nullable=False)
 
 
 # 工人表（一个工人只能对应一个工序，可更换）
