@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from db_config import db
 from models import CompanyAccount, Company
+from utils.decorators import login_required, roles_required
 
 company_account_bp = Blueprint('company_account', __name__, url_prefix="/api/company_account")
 
@@ -31,6 +32,7 @@ def model_to_dict(obj):
 # 1. 新增公司账户
 # -------------------------------
 @company_account_bp.route("/add", methods=["POST"])
+@login_required
 def add_account():
     data = request.json
     print("新增公司账户信息：", data)
