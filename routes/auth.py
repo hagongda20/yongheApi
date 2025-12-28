@@ -126,6 +126,10 @@ def register_list():
 @auth_bp.route('/register/approve/<int:reg_id>', methods=['POST'])
 @roles_required('管理员')
 def approve_register(reg_id):
+    role_id = request.json.get('role_id')
+    if not role_id:
+        return jsonify(success=False, message='必须分配角色'), 400
+
     reg = UserRegister.query.get_or_404(reg_id)
 
     if reg.status != '待审核':
@@ -143,8 +147,8 @@ def approve_register(reg_id):
     db.session.add(user)
     db.session.flush()  # 获取 user.id
 
-    # 默认角色：普通用户
-    role = Role.query.filter_by(name='普通用户').first()
+    # 角色
+    role = Role.query.filter_by(id=role_id).first()
     if role:
         db.session.add(UserRole(user_id=user.id, role_id=role.id))
 
@@ -182,3 +186,17 @@ def reject_register(reg_id):
     db.session.commit()
 
     return jsonify({'success': True, 'message': '已拒绝'})
+
+
+'''
+  管理员进行权限分配
+'''
+@auth_bp.route('/roles/assignable', methods=['GET'])
+@roles_required('管理员')
+def assignable_roles():
+    roles = Role.query.filter(Role.name != '管理员').all()
+    return jsonify(
+        success=True,
+        data=[{'id': r.id, 'name': r.name} for r in roles]
+    )
+
