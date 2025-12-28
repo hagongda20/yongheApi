@@ -1,6 +1,6 @@
 # routes/auth.py
 from flask import Blueprint, request, jsonify, g
-from models import User, UserRegister, Role, UserRole
+from models import User, UserRegister, Role, UserRole, Company
 from db_config import db
 import jwt
 from datetime import datetime, timedelta
@@ -28,6 +28,9 @@ def login():
     role_names = [r.name for r in user.roles]
 
     # 打印调试信息
+    '''
+    
+    '''
     print('===== 登录用户信息 =====')
     print('user_id:', user.id)
     print('username:', user.username)
@@ -72,8 +75,9 @@ def register():
         return jsonify({'success': False, 'message': '用户名已存在'}), 400
 
     reg = UserRegister(
-        username=data['username'],
-        real_name=data.get('real_name'),
+        username = data['username'],
+        real_name = data.get('real_name'),
+        company_id = data.get('company_id'),
         phone=data.get('phone'),
         remark=data.get('remark')
     )
@@ -91,20 +95,27 @@ def register():
 @auth_bp.route('/register/list', methods=['GET'])
 @roles_required('管理员')
 def register_list():
-    items = UserRegister.query.order_by(
-        UserRegister.created_at.desc()
-    ).all()
+    items = (
+        db.session.query(UserRegister, Company)
+        .join(Company, UserRegister.company_id == Company.id)
+        .order_by(UserRegister.created_at.desc())
+        .all()
+    )
 
-    data = [{
-        'id': i.id,
-        'username': i.username,
-        'real_name': i.real_name,
-        'phone': i.phone,
-        'status': i.status,
-        'remark': i.remark,
-        'reject_reason': i.reject_reason,
-        'created_at': i.created_at.strftime('%Y-%m-%d %H:%M')
-    } for i in items]
+    data = []
+    for reg, company in items:
+        data.append({
+            'id': reg.id,
+            'username': reg.username,
+            'real_name': reg.real_name,
+            'phone': reg.phone,
+            'company_id': company.id,
+            'company_name': company.name,
+            'status': reg.status,
+            'remark': reg.remark,
+            'reject_reason': reg.reject_reason,
+            'created_at': reg.created_at.strftime('%Y-%m-%d %H:%M')
+        })
 
     return jsonify({'success': True, 'data': data})
 
@@ -122,11 +133,12 @@ def approve_register(reg_id):
 
     # 创建用户
     user = User(
-        username=reg.username,
-        password_hash=reg.password_hash,
+        username = reg.username,
+        password_hash = reg.password_hash,
         real_name=reg.real_name,
-        phone=reg.phone,
-        remark=reg.remark
+        company_id = reg.company_id,
+        phone = reg.phone,
+        remark = reg.remark
     )
     db.session.add(user)
     db.session.flush()  # 获取 user.id

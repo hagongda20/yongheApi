@@ -27,6 +27,17 @@ class User(db.Model):
     phone = db.Column(db.String(20))
     remark = db.Column(db.String(255))
 
+    # ⭐⭐⭐ 关键：所属公司（必须存）
+    company_id = db.Column(
+        db.Integer,
+        db.ForeignKey('companies.id'),
+        nullable=False,
+        index=True
+    )
+
+    # ORM 关系（只是“好用”，不是存储）
+    company = db.relationship('Company', back_populates='users')
+
     # ⭐ 关键：角色关联
     roles = db.relationship(
         'Role',
@@ -53,6 +64,9 @@ class UserRegister(db.Model):
     real_name = db.Column(db.String(50))  # 真实姓名，用于锁定记录者
     phone = db.Column(db.String(20))     # 
     remark = db.Column(db.String(255))  # 备注
+
+    # ⭐ 必须：所属公司（审核通过后直接用）
+    company_id = db.Column(db.Integer, nullable=False, index=True)
 
     # 状态：待审核 / 已通过 / 已拒绝
     status = db.Column(db.String(20), default='待审核')
@@ -190,10 +204,13 @@ class Company(db.Model):
     description = db.Column(db.String(200)) # 公司描述或业务范围，可选
     remark = db.Column(db.String(200)) # 备注，用于记录其他额外信息或说明
 
-    # 关系
-    bank_accounts = db.relationship('CompanyAccount', back_populates='company')
+    # 关系   后期可能面临优化，bank_accounts、customer_balances、transactions这三个关联肯能导致维护困难
+    bank_accounts = db.relationship('CompanyAccount', back_populates='company')        
     customer_balances = db.relationship('CustomerBalance', back_populates='company')
     transactions = db.relationship('Transaction', back_populates='company')
+
+    # ✅ 只保留“用户”这一条关系
+    users = db.relationship('User', back_populates='company')
 
 # -------------------------------
 # 客户表：记录公司所有客户信息
@@ -218,7 +235,7 @@ class Customer(db.Model, TimestampMixin):
     accounts = db.relationship('CustomerAccount', back_populates='customer')
     transactions = db.relationship('Transaction', back_populates='customer')
     balances = db.relationship('CustomerBalance', back_populates='customer')
-    adjustments = db.relationship('AdjustmentLog', back_populates='customer')
+    # adjustments = db.relationship('AdjustmentLog', back_populates='customer')
 
 # -------------------------------
 # 客户支付账户表
@@ -324,12 +341,12 @@ class Transaction(db.Model, TimestampMixin):
 
     remark = db.Column(db.String(200))  # 备注，可记录业务说明、合同号、发票号等
 
-    # 关系
+    # 关系     company、customer、customer_account、company_account、adjustments，这几个面临优化，避免关联过多，混乱
     company = db.relationship('Company', back_populates='transactions')
     customer = db.relationship('Customer', back_populates='transactions')
     customer_account = db.relationship('CustomerAccount', back_populates='transactions')
     company_account = db.relationship('CompanyAccount', back_populates='transactions')
-    adjustments = db.relationship('AdjustmentLog', back_populates='transaction')
+    # adjustments = db.relationship('AdjustmentLog', back_populates='transaction')
 
 
 # -------------------------------
@@ -359,10 +376,10 @@ class CustomerBalance(db.Model, TimestampMixin):
 
     remark = db.Column(db.String(200)) # 备注，可记录余额计算规则或业务说明
 
-    # 关系
+    # 关系   customer、company、adjustments，关联过多，后期优化
     customer = db.relationship('Customer', back_populates='balances')
     company = db.relationship('Company', back_populates='customer_balances')
-    adjustments = db.relationship('AdjustmentLog', back_populates='customer_balance')
+    # adjustments = db.relationship('AdjustmentLog', back_populates='customer_balance')
 
 
 # -------------------------------
@@ -387,7 +404,10 @@ class AdjustmentLog(db.Model, TimestampMixin):
     remark = db.Column(db.String(200))
     # 备注，可记录调整原因、责任人、审批信息等
 
-    # 关系
+    # 关系  
+    '''
     customer = db.relationship('Customer', back_populates='adjustments')
     customer_balance = db.relationship('CustomerBalance', back_populates='adjustments')
     transaction = db.relationship('Transaction', back_populates='adjustments')
+    '''
+    
